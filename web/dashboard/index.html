@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Rankwell Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --border: #2a2e3a;
+    --text: #e6e8ee;
+    --muted: #8b90a0;
+    --accent: #4f8cff;
+    --video: #4f8cff;
+    --text-type: #34c98f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px;
+  }
+  h1 { font-size: 20px; margin: 0 0 24px; }
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .controls input, .controls select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .controls input { flex: 1; min-width: 200px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-video { background: rgba(79,140,255,0.15); color: var(--video); }
+  .badge-text { background: rgba(52,201,143,0.15); color: var(--text-type); }
+  .score { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .pagination button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .state-message { padding: 32px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+  <h1>Rankwell — Content Search</h1>
+
+  <div class="controls">
+    <input id="query" type="text" placeholder="Ara... (başlıkta anahtar kelime)">
+    <select id="type">
+      <option value="">Tüm türler</option>
+      <option value="video">Video</option>
+      <option value="text">Metin</option>
+    </select>
+    <select id="sort">
+      <option value="score">Skora göre</option>
+      <option value="date">Tarihe göre</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Başlık</th><th>Tür</th><th>Skor</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div id="state" class="state-message" style="display:none"></div>
+
+  <div class="pagination">
+    <button id="prev">← Önceki</button>
+    <span id="pageInfo">Sayfa 1</span>
+    <button id="next">Sonraki →</button>
+  </div>
+
+<script>
+  const state = { query: "", type: "", sort: "score", page: 1, perPage: 10 };
+
+  const rowsEl = document.getElementById("rows");
+  const stateEl = document.getElementById("state");
+  const pageInfoEl = document.getElementById("pageInfo");
+  const prevBtn = document.getElementById("prev");
+  const nextBtn = document.getElementById("next");
+
+  function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  async function load() {
+    const params = new URLSearchParams({
+      sort: state.sort,
+      page: state.page,
+      per_page: state.perPage,
+    });
+    if (state.query) params.set("q", state.query);
+    if (state.type) params.set("type", state.type);
+
+    stateEl.style.display = "none";
+    rowsEl.innerHTML = "";
+
+    let res;
+    try {
+      res = await fetch(`/api/v1/contents?${params}`);
+    } catch (err) {
+      showState("Sunucuya ulaşılamadı.");
+      return;
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      showState(body.error || "Bir hata oluştu.");
+      return;
+    }
+
+    const { data, meta } = await res.json();
+
+    if (data.length === 0) {
+      showState("Sonuç bulunamadı.");
+    } else {
+      renderRows(data);
+    }
+
+    const totalPages = Math.max(1, Math.ceil(meta.total / meta.per_page));
+    pageInfoEl.textContent = `Sayfa ${meta.page} / ${totalPages} (${meta.total} sonuç)`;
+    prevBtn.disabled = meta.page <= 1;
+    nextBtn.disabled = meta.page >= totalPages;
+  }
+
+  function renderRows(items) {
+    rowsEl.innerHTML = items.map(item => `
+      <tr>
+        <td>${escapeHTML(item.title)}</td>
+        <td><span class="badge badge-${item.type}">${item.type}</span></td>
+        <td class="score">${item.score.toFixed(2)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function showState(message) {
+    stateEl.textContent = message;
+    stateEl.style.display = "block";
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById("query").addEventListener("input", debounce(e => {
+    state.query = e.target.value;
+    state.page = 1;
+    load();
+  }, 300));
+
+  document.getElementById("type").addEventListener("change", e => {
+    state.type = e.target.value;
+    state.page = 1;
+    load();
+  });
+
+  document.getElementById("sort").addEventListener("change", e => {
+    state.sort = e.target.value;
+    state.page = 1;
+    load();
+  });
+
+  prevBtn.addEventListener("click", () => { state.page--; load(); });
+  nextBtn.addEventListener("click", () => { state.page++; load(); });
+
+  load();
+</script>
+</body>
+</html>
