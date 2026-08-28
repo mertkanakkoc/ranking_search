@@ -30,9 +30,9 @@ func (r *ProviderRepository) ListActive(ctx context.Context) ([]provider.Provide
 	}
 	defer rows.Close()
 
-	var configs []repository.ProviderConfig
+	var configs []provider.ProviderConfig
 	for rows.Next() {
-		var cfg repository.ProviderConfig
+		var cfg provider.ProviderConfig
 		if err := rows.Scan(&cfg.Name, &cfg.Format, &cfg.BaseURL, &cfg.RateLimitRPS, &cfg.TimeoutMS); err != nil {
 			return nil, fmt.Errorf("postgres: scan provider config: %w", err)
 		}
