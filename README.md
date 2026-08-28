@@ -116,10 +116,13 @@ Sağlık kontrolü.
 ### Docker Compose ile (önerilen)
 
 ```bash
+cp .env.example .env   # opsiyonel — özelleştirmek istersen; yoksa varsayılan değerlerle çalışır
 docker compose up --build
 ```
 
 Bu tek komut Postgres, Redis ve API'yi ayağa kaldırır, şemayı otomatik kurar (migration dosyaları `docker-entrypoint-initdb.d` ile ilk başlatmada çalışır), ingest servisini başlatır. Dashboard: http://localhost:8080
+
+`.env` dosyası opsiyoneldir — oluşturulmazsa `docker-compose.yml`'deki varsayılan değerler (`.env.example`'daki gibi) kullanılır. Postgres kullanıcı adı/şifresi, DB adı, host port'u ve ingest aralığı `.env` üzerinden özelleştirilebilir.
 
 ### Lokal geliştirme
 
