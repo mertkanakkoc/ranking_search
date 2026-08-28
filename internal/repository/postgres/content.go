@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mertkanakkoc/ranking_search/internal/domain"
@@ -141,4 +143,34 @@ func (r *ContentRepository) Search(ctx context.Context, params repository.Search
 	}
 
 	return repository.SearchResult{Items: items, Total: total}, nil
+}
+
+func (r *ContentRepository) Get(ctx context.Context, id string) (domain.Content, error) {
+	const query = `
+		SELECT external_id, provider, title, content_type,
+		       views, likes, reading_time, reactions,
+		       published_at, tags, raw_metrics, final_score
+		FROM contents
+		WHERE id = $1
+	`
+
+	var (
+		c           domain.Content
+		contentType string
+	)
+
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&c.ExternalID, &c.Provider, &c.Title, &contentType,
+		&c.Metrics.Views, &c.Metrics.Likes, &c.Metrics.ReadingTime, &c.Metrics.Reactions,
+		&c.PublishedAt, &c.Tags, &c.RawMetrics, &c.FinalScore,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Content{}, repository.ErrNotFound
+		}
+		return domain.Content{}, fmt.Errorf("postgres: get content: %w", err)
+	}
+
+	c.Type = domain.ContentType(contentType)
+	return c, nil
 }

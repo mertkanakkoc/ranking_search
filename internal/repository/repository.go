@@ -2,12 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/mertkanakkoc/ranking_search/internal/domain"
 	"github.com/mertkanakkoc/ranking_search/internal/provider"
 )
 
 type Sortfield string
+
+var ErrNotFound = errors.New("repository: not found")
 
 const (
 	SortByScore Sortfield = "score"
@@ -36,6 +39,7 @@ type ProviderStatusUpdate struct {
 type ContentRepository interface {
 	Upsert(ctx context.Context, c domain.Content) error
 	Search(ctx context.Context, params SearchParams) (SearchResult, error)
+	Get(ctx context.Context, id string) (domain.Content, error)
 }
 
 type ProviderRepository interface {

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -43,6 +44,23 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *SearchHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	c, err := h.contentRepo.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "content not found")
+			return
+		}
+		slog.Error("httpapi: get content", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to get content")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toContentResponse(c))
 }
 
 func parseSearchParams(r *http.Request) (repository.SearchParams, error) {
@@ -90,18 +108,22 @@ func parseSearchParams(r *http.Request) (repository.SearchParams, error) {
 	return params, nil
 }
 
+func toContentResponse(c domain.Content) ContentResponse {
+	return ContentResponse{
+		ExternalID:  c.ExternalID,
+		Provider:    c.Provider,
+		Title:       c.Title,
+		Type:        string(c.Type),
+		Score:       c.FinalScore,
+		PublishedAt: c.PublishedAt,
+		Tags:        c.Tags,
+	}
+}
+
 func toContentResponses(items []domain.Content) []ContentResponse {
 	responses := make([]ContentResponse, 0, len(items))
 	for _, c := range items {
-		responses = append(responses, ContentResponse{
-			ExternalID:  c.ExternalID,
-			Provider:    c.Provider,
-			Title:       c.Title,
-			Type:        string(c.Type),
-			Score:       c.FinalScore,
-			PublishedAt: c.PublishedAt,
-			Tags:        c.Tags,
-		})
+		responses = append(responses, toContentResponse(c))
 	}
 	return responses
 }
