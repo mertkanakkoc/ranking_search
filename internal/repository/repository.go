@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mertkanakkoc/ranking_search/internal/domain"
+	"github.com/mertkanakkoc/ranking_search/internal/provider"
 )
 
 type Sortfield string
@@ -26,14 +27,6 @@ type SearchResult struct {
 	Total int
 }
 
-type ProviderConfig struct {
-	Name         string
-	Format       string
-	BaseURL      string
-	RateLimitRPS float64
-	TimeoutMS    int
-}
-
 type ProviderStatusUpdate struct {
 	Name   string
 	Status string
@@ -46,6 +39,6 @@ type ContentRepository interface {
 }
 
 type ProviderRepository interface {
-	ListActive(ctx context.Context) ([]ProviderConfig, error)
+	ListActive(ctx context.Context) ([]provider.ProviderConfig, error)
 	UpdateStatus(ctx context.Context, update ProviderStatusUpdate) error
 }

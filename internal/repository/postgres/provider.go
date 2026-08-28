@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mertkanakkoc/ranking_search/internal/provider"
 	"github.com/mertkanakkoc/ranking_search/internal/repository"
 )
 
@@ -16,7 +17,7 @@ func NewProviderRepository(pool *pgxpool.Pool) *ProviderRepository {
 	return &ProviderRepository{pool: pool}
 }
 
-func (r *ProviderRepository) ListActive(ctx context.Context) ([]repository.ProviderConfig, error) {
+func (r *ProviderRepository) ListActive(ctx context.Context) ([]provider.ProviderConfig, error) {
 	const query = `
 		SELECT name, format, base_url, rate_limit_rps, timeout_ms
 		FROM providers
