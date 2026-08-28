@@ -8,19 +8,19 @@ import (
 	"github.com/mertkanakkoc/ranking_search/internal/provider"
 )
 
-type Sortfield string
+type SortField string
 
 var ErrNotFound = errors.New("repository: not found")
 
 const (
-	SortByScore Sortfield = "score"
-	SortByDate  Sortfield = "date"
+	SortByScore SortField = "score"
+	SortByDate  SortField = "date"
 )
 
 type SearchParams struct {
 	Query   string
 	Type    domain.ContentType
-	Sort    Sortfield
+	Sort    SortField
 	Page    int
 	PerPage int
 }
