@@ -26,7 +26,26 @@ type SearchResult struct {
 	Total int
 }
 
+type ProviderConfig struct {
+	Name         string
+	Format       string
+	BaseURL      string
+	RateLimitRPS float64
+	TimeoutMS    int
+}
+
+type ProviderStatusUpdate struct {
+	Name   string
+	Status string
+	Error  string
+}
+
 type ContentRepository interface {
 	Upsert(ctx context.Context, c domain.Content) error
 	Search(ctx context.Context, params SearchParams) (SearchResult, error)
+}
+
+type ProviderRepository interface {
+	ListActive(ctx context.Context) ([]ProviderConfig, error)
+	UpdateStatus(ctx context.Context, update ProviderStatusUpdate) error
 }
