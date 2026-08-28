@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
+	"github.com/mertkanakkoc/ranking_search/internal/cache"
 	"github.com/mertkanakkoc/ranking_search/internal/httpapi"
 	"github.com/mertkanakkoc/ranking_search/internal/ingest"
+	"github.com/mertkanakkoc/ranking_search/internal/repository/cached"
 	"github.com/mertkanakkoc/ranking_search/internal/repository/postgres"
 )
 
@@ -39,8 +42,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	redisClient := redis.NewClient(&redis.Options{Addr: redisAddr})
+	defer redisClient.Close()
+
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		slog.Warn("redis unavailable, continuing without cache", "addr", redisAddr, "error", err)
+	}
+
 	providerRepo := postgres.NewProviderRepository(pool)
-	contentRepo := postgres.NewContentRepository(pool)
+	contentRepo := cached.NewContentRepository(
+		postgres.NewContentRepository(pool),
+		cache.NewRedisCache(redisClient),
+	)
 
 	interval := 5 * time.Minute
 	if v := os.Getenv("INGEST_INTERVAL"); v != "" {
