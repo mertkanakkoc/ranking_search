@@ -13,6 +13,7 @@ func NewRouter(contentRepo repository.ContentRepository) http.Handler {
 
 	mux.HandleFunc("GET /api/v1/contents", searchHandler.Search)
 	mux.HandleFunc("GET /api/v1/health", Health)
+	mux.HandleFunc("GET /api/v1/contents/{id}", searchHandler.GetByID)
 
 	return mux
 }
